@@ -14,6 +14,8 @@ from .store import data_dir
 _RACES_FILE = "scraped_races.json"
 _HORSES_FILE = "scraped_horses.json"
 _PARSE_ERRORS_FILE = "parse_errors.json"
+_LISTED_DATES_FILE = "listed_dates.json"
+_STAKES_CANDIDATES_FILE = "stakes_candidates.json"
 
 
 def _path(name: str) -> Path:
@@ -57,6 +59,23 @@ def mark_horses(ids) -> None:
 def pending_horses(candidates) -> list[str]:
     done = scraped_horses()
     return [c for c in candidates if c not in done]
+
+
+def listed_dates() -> set[str]:
+    """重賞 discovery で list 取得済の日付 (YYYYMMDD)。resume 時の再 list を避ける。"""
+    return _load(_LISTED_DATES_FILE)
+
+
+def mark_listed_dates(days) -> None:
+    _save(_LISTED_DATES_FILE, listed_dates() | set(days))
+
+
+def stakes_candidates() -> set[str]:
+    return _load(_STAKES_CANDIDATES_FILE)
+
+
+def add_stakes_candidates(ids) -> None:
+    _save(_STAKES_CANDIDATES_FILE, stakes_candidates() | set(ids))
 
 
 def append_parse_errors(entries: list[tuple[str, str]]) -> None:

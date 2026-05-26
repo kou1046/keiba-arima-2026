@@ -50,3 +50,17 @@ def collect_ids_on_dates(client: NetkeibaClient, dates: list[date]) -> list[str]
     for d in dates:
         ids.extend(client.list_race_ids_on(d))
     return ids
+
+
+def discover_graded_stakes(client: NetkeibaClient, dates: list[date]) -> list[str]:
+    """各日の list ページから JRA 重賞だけを抽出して候補集合に蓄積する (resume 可能)。
+
+    list 済の日付は state に記録し、再 dispatch では list を再取得しない (~1,560 list req を
+    一度きりに)。fetch 自体は呼び出し側 (scrape_ids) が候補に対して行う。
+    """
+    pending_dates = [d for d in dates if d.strftime("%Y%m%d") not in state.listed_dates()]
+    log.info("discover: %d dates total, %d to list", len(dates), len(pending_dates))
+    for d in pending_dates:
+        state.add_stakes_candidates(client.list_graded_race_ids_on(d))
+        state.mark_listed_dates([d.strftime("%Y%m%d")])
+    return sorted(state.stakes_candidates())
