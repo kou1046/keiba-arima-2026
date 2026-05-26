@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# uv / venv
+.venv/
+.python-version
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# test / lint caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# DuckDB はキャッシュ用 (parquet が真実の出所、必要なら view 作って再生成)
+*.duckdb
+*.duckdb.wal
+
+# scratch / 一時生成物
+.scratch/
+*.tmp
+
+# secret (もし誤って置いた場合の保険、原則 secret は env で渡す)
+.env
+.env.local
