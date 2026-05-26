@@ -1,0 +1,66 @@
+name: backfill-all
+
+# 1 回 dispatch で stakes → nakayama → horses を直列実行する束ね workflow。
+# 個別 workflow (backfill-stakes.yml 等) は debug / 再走用に残す。
+#
+# - needs: で順序保証 (前 job が data を commit/push、次 job は最新 main を pull して resume)
+# - 各 job は独立 runner、それぞれ 6h budget 内、state ファイルで途中再開可
+# - 1 つでも失敗したら以降スキップ (継続したいなら個別 workflow を再走)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  stakes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_stakes
+          commit-message: "data: backfill stakes (G1/G2/G3 15y)"
+
+  nakayama:
+    needs: stakes
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # 直前 job が push した最新 state を拾う
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_nakayama
+          commit-message: "data: backfill nakayama 2500m (10y)"
+
+  horses:
+    needs: nakayama
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_horses
+          commit-message: "data: backfill horse histories (3y)"
