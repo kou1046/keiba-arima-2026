@@ -42,7 +42,7 @@ PoC で Access アプリも cf_api で作成済 (現在 keiba.iwachan.dev は On
 | resource | live id |
 |---|---|
 | application `keiba` | `ebe4ddb5-109c-431a-99fd-6762aed90de6` |
-| policy `keiba email allowlist` | `c723d516-2ce5-4f34-b452-54b020e92880` (inline / reusable=false) |
+| policy `keiba email allowlist` | `9510117c-70a4-4c6c-ae83-033d2b1fd6a3` (inline / reusable=false, include=iwashiro0517@gmail.com) |
 
 `access.tf` は **reusable policy** を別 resource で持ち app から参照する形なので、cf_api で作った
 **inline policy** とはモデルが違う。import すると差分が暴れるため、Access は削除して terraform に
