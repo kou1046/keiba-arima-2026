@@ -33,8 +33,28 @@ terraform import cloudflare_workers_custom_domain.keiba \
   5c716b18b42d2a6825d14fe1b81e4989/321707bdc4cfd1522ed3325bf3f6ba6ea72da49d
 ```
 
-import 後 `terraform plan` で差分が出なければ取り込み成功。CF Access は未作成なので
-import 不要、apply で新規作成される (= ここで初めて keiba.iwachan.dev に認証が掛かる)。
+import 後 `terraform plan` で差分が出なければ取り込み成功。
+
+### CF Access (PoC で cf_api 作成済 → 削除して再作成推奨)
+
+PoC で Access アプリも cf_api で作成済 (現在 keiba.iwachan.dev は One-Time PIN で保護中):
+
+| resource | live id |
+|---|---|
+| application `keiba` | `ebe4ddb5-109c-431a-99fd-6762aed90de6` |
+| policy `keiba email allowlist` | `c723d516-2ce5-4f34-b452-54b020e92880` (inline / reusable=false) |
+
+`access.tf` は **reusable policy** を別 resource で持ち app から参照する形なので、cf_api で作った
+**inline policy** とはモデルが違う。import すると差分が暴れるため、Access は削除して terraform に
+作り直すのが綺麗:
+
+```bash
+# 既存 Access app を削除 (cf-gateway cf_api or Dashboard)
+#   DELETE /accounts/<account_id>/access/apps/ebe4ddb5-109c-431a-99fd-6762aed90de6
+terraform apply   # access.tf が app + reusable policy を新規作成
+```
+
+削除〜apply の間だけ keiba.iwachan.dev が無認証になる点に注意 (データ未投入なら実害なし)。
 
 ### 代替: import せず削除して再作成
 
