@@ -1,96 +1,86 @@
 # keiba-arima-2026
 
-年末の有馬記念に向けた競馬データ蓄積 + AI 自動 briefing。netkeiba scraper / GH Actions cron /
-Parquet 蓄積 / personal-llm Worker による briefing 生成 / R2 公開 + CF Access (One-Time PIN) で
-`keiba.iwachan.dev`。失敗は LINE Bot 通知。
+年末の有馬記念に向けた、競馬予想サポートシステム。
+コンピュータが毎週末のレース結果をためて、AI が分析メモを書き、メンバーが Claude.ai でそれを読みながら買い目の検討材料にする。
 
-> 役割分担: **briefing 生成** は自動・大量なので Gemini 2.5 flash (personal-llm Worker 経由)、
-> **最終分析 / 馬券判断** は人間が Claude.ai web / Claude Code で briefing を読みながら行う。
-> ML モデルは入れず、生データの SVG 可視化を briefing に挿す方針。
+**最終的な判断 / 馬券購入は人間が行う**。AI は分析材料を整理する役回り。
 
-## 構成
+## 見られる場所
+
+🔗 **https://keiba.iwachan.dev**(メールでログイン)
+
+- 初回アクセス時に email アドレスを入力 → ワンタイム PIN が届く → ログイン
+- セッションは 1 週間有効
+- 招待されてない email は弾かれる(管理者に追加してもらってください)
+
+## ページ構成
 
 ```
-src/keiba_arima/
-├── config.py          # 全 env / rate-limit / scope / R2 レイアウトの集約点
-├── http.py            # rate-limited httpx (8s + jitter, backoff, MAX_RETRIES で abort)
-├── models.py          # races / results / horses / payouts の row dataclass
-├── parsers/           # netkeiba HTML → dataclass (network に触れない純粋関数)
-├── clients/           # netkeiba / jma / llm / r2 / line (class、必須 env を fail-fast)
-├── store.py           # Parquet 蓄積 (race_date で year=/month= partition, keyed upsert)
-├── db.py              # DuckDB read-only view (parquet glob)
-├── state.py           # 取得済 id の記録 (resume 用)
-├── discover.py        # scrape 対象 race_id の列挙
-├── viz.py             # 生データ SVG 可視化 (着順推移 / コーナー位置取り / 人気vs着順)
-├── briefing.py        # DB → context → LLM → markdown
-├── publish.py         # R2 upload + index.json
-├── prompts/           # briefing / review system prompt
-└── jobs/              # 6 entrypoint (scrape / backfill x3 / brief x2)
-worker/                # keiba.iwachan.dev フロント (CF Worker, R2 を読み配信)
-terraform/             # Custom Domain + CF Access (iwachan.dev zone は core-iac の state を参照)
-.github/workflows/     # cron / workflow_dispatch
+keiba.iwachan.dev/
+├── /                              ← 直近の分析メモ一覧
+├── /<レース名>/                    ← そのレースの分析メモが時系列で並ぶ
+│   ├ 12/8 21:00   前哨戦終了時点
+│   ├ 12/15 21:00  ステイヤーズ S 後
+│   ├ 12/22 23:00  ファン投票確定後
+│   ├ 12/27 12:00  枠順発表後
+│   ├ 12/28 08:00  当日朝オッズ反映
+│   └ 12/28 17:00  レース後 結果 review
 ```
 
-データの真実の出所は `data/year=YYYY/month=MM/*.parquet` (commit 対象)。DuckDB は read-only view。
+`/<レース名>/<timestamp>.md` を直接踏むと分析メモが raw markdown で表示される。`?html` を付けると人間ブラウザ向けに整形(`...md?html`)。
 
-## 開発
+## 更新タイミング
 
-```bash
-make sync      # uv sync --extra dev
-make test      # pytest (fixture ベースの parser/store/viz テスト)
-make lint      # ruff
+| いつ | 何が起きる |
+|---|---|
+| **日曜 23:00 JST** | 先週末走ったレース結果をデータベースに追記 |
+| **日曜 23:30 JST** | 翌週末走る重賞(G1/G2/G3)の分析メモを公開 |
+| **月曜 01:00 JST** | 直前に走った重賞の review(結果 + 事前予想との照合)を公開 |
+| **木曜 21:00 JST** | 枠順発表後の分析メモ更新 |
+| **当日朝(自動)** | 最終 odds・馬体重を反映した最新版 |
+
+過去の分析メモは消えない。time-series で「予想がどう変化したか」を後追いできる。
+
+## Claude.ai での使い方
+
+分析メモを開いて URL をコピー → Claude.ai web か Claude Code に貼って質問:
+
+```
+https://keiba.iwachan.dev/arima-2026/2026-12-28-08:00.md を読んで、
+過去 10 年の有馬の勝ち馬パターンと照らして、買い目の検討材料を整理して。
+最終判断は私がするから、複数のシナリオで根拠付きで。
 ```
 
-## jobs
+時系列分析もできる:
 
-| job | trigger | 内容 |
-|---|---|---|
-| `scrape-weekly` | 日曜 23:00 JST | 直近週末の全レースを取得し data/ を commit |
-| `backfill-stakes` | 手動 | 過去 15 年の重賞 (G1/G2/G3) |
-| `backfill-nakayama` | 手動 | 過去 10 年の中山 2500m (平場含む) |
-| `backfill-horses` | 手動 | 出走馬の profile + 直近 3 年の戦績 |
-| `brief-upcoming` | 日曜 23:30 / 木曜 21:00 JST | 14 日以内の重賞の事前 briefing を R2 公開 |
-| `brief-review` | 月曜 01:00 JST | 直近に走った重賞の review を R2 公開 |
+```
+https://keiba.iwachan.dev/arima-2026/ にある分析メモ全部を時系列で読んで、
+予想がどう変化したか、各 milestone (枠順発表 / 当日朝オッズ) で何が変わったかを整理して。
+```
 
-backfill は IP block で落ちても `data/_state/*.json` から resume できる。
+## 分析メモに何が書いてあるか
 
-## 公開フロント (keiba.iwachan.dev)
+- レースの概要(距離・舞台・過去傾向)
+- 出走馬一覧(直近戦績 / 適性 / 注目ポイント)
+- 複数の予想シナリオ(本命型 / 差し有利 / 牝馬軽量 / 穴 など)、根拠付き
+- データ可視化(着順推移 / コーナー位置取り / 人気 vs 着順)
+- レース後 review なら、事前 briefing との hit/miss 照合
 
-- `worker/` … R2 の `keiba/briefings/` を `<race-id>/...` として配信。`.md` は raw、`?html` で HTML 整形。
-- `terraform/` … `cloudflare_workers_custom_domain` + CF Access (One-Time PIN, email allowlist)。
+**「これが本命」とは書かない**(断定しない設計)。判断材料を構造化して人間に渡す形。
 
-### deploy (cf-gateway MCP 経由)
+## 自分が決めること、AI が助けること
 
-Worker script は wrangler ではなく **cf-gateway MCP** で deploy する運用 (詳細は `terraform/README.md`):
+| 自分が決める | AI が助ける |
+|---|---|
+| 何を本命にするか | データを整理して見せる |
+| いくら賭けるか | 過去パターンとの一致点を指摘 |
+| 買うか買わないか | 複数のシナリオを示す |
+| どの馬券種 | 配当の期待値を計算 |
 
-1. `cd worker && npx wrangler deploy --dry-run --outdir dist` で単一バンドル生成
-2. `prepare_deploy_upload("worker.js")` → 返った `upload_url` に bundle を PUT
-3. `deploy_worker(script_name="keiba", ...)` (Duo 承認) で CF へ multipart upload
-4. Custom Domain / CF Access は `terraform apply` (Custom Domain を cf_api で先行作成した場合は import)
+## アクセスがほしい / もう少し詳しく知りたい
 
-ローカル確認だけなら `cd worker && npx wrangler dev`。友人の閲覧許可は `var.access_emails` を PR で増やす。
+オーナーに連絡してください。email allowlist に追加します。
 
-> 現状 (PoC): `keiba` Worker と Custom Domain `keiba.iwachan.dev` は作成済・到達確認済。
-> **CF Access は未設定 = 公開状態**。実データ投入・共有の前に `terraform apply` で Access を張ること。
+## 開発者向け
 
-## 必要な secret / vars (GH Actions)
-
-vars: `LLM_BASE_URL` (例 `https://llm.iwachan.dev`), `R2_BUCKET` (`iwachan-general`)
-secrets: `LLM_URL_SECRET` `LLM_AUTH_TOKEN` `R2_ACCOUNT_ID` `R2_ACCESS_KEY_ID`
-`R2_SECRET_ACCESS_KEY` `LINE_CHANNEL_ACCESS_TOKEN` `LINE_USER_ID`
-
-## データソース (実地確認済 / event 1623)
-
-- **netkeiba** レース結果・馬個別・最終オッズ … 実装済 (`clients/netkeiba.py`)。
-- **気象庁 forecast** (千葉県北西部 = 中山) … 実装済 (`clients/jma.py`)。認証なし公開 JSON。
-  `brief-upcoming` がレース当日の天気/降水確率/気温を briefing に添える。
-- **JRA クッション値 / 含水率** … 実装済 (`clients/jra.py`)。`fetch-baba` (土日 cron) が `baba`
-  parquet に蓄積し、`brief-upcoming` がレース競馬場の最新値を briefing に添える。
-- **調教タイム** … JS 動的読み込みで静的 scrape 不可。Playwright or JRA-VAN 課金が必要なため見送り。
-
-## 既知の TODO
-
-- parser の CSS セレクタは netkeiba の実 DOM で要検証 (構造変更時は ParseError → LINE 通知 → fail)。
-- 事前 briefing 用の出馬表 / 枠順 (shutuba) scraper は本 PR では未実装。
-  scrape された結果データを briefing 入力にする配線は完成済で、shutuba parser を
-  同じ store 経由で足せば `brief-upcoming` がそのまま機能する。
+[docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) を参照。
