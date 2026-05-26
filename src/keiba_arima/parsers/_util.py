@@ -10,6 +10,17 @@ def clean(s: str | None) -> str:
     return (s or "").replace("\xa0", " ").strip()
 
 
+# 重賞グレード。netkeiba は detail ページでローマ数字 (GI/GII/GIII、環境により全角 GⅠ…)、
+# list ページではアラビア数字 (G1) と表記揺れがある。長いものから試して G1/G2/G3 に正規化。
+_GRADE_RE = re.compile(r"G\s*(Ⅲ|Ⅱ|Ⅰ|III|II|I|[123])")
+_GRADE_NORM = {"Ⅰ": "1", "Ⅱ": "2", "Ⅲ": "3", "I": "1", "II": "2", "III": "3", "1": "1", "2": "2", "3": "3"}
+
+
+def find_grade(text: str | None) -> str | None:
+    m = _GRADE_RE.search(text or "")
+    return f"G{_GRADE_NORM[m.group(1)]}" if m else None
+
+
 def to_int(s: str | None) -> int | None:
     s = clean(s)
     m = re.search(r"-?\d+", s.replace(",", ""))

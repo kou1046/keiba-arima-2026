@@ -16,6 +16,10 @@ from ..parsers import horse as horse_parser
 from ..parsers import payout as payout_parser
 from ..parsers import race as race_parser
 from ..parsers import result as result_parser
+from ..parsers._util import find_grade
+
+# JRA 中央 10 競馬場の race_id 競馬場コード (01-10)。これ以外 (30番台/40番台) は地方競馬。
+_JRA_COURSE_CODES = {f"{i:02d}" for i in range(1, 11)}
 
 
 class RacePage:
@@ -54,6 +58,16 @@ class NetkeibaClient:
         html = self._http.get_html(url)
         return _extract_race_ids(html)
 
+    def list_graded_race_ids_on(self, day: date) -> list[str]:
+        """開催日の JRA 重賞 (G1/G2/G3) race_id だけを list ページから列挙する。
+
+        list ページは link テキストにグレードを含む (例 '有馬記念(G1)') ので、全レースを
+        fetch せずここで重賞だけに絞れる (backfill-stakes の fetch 量を ~50k→~2k に削減)。
+        """
+        url = f"{config.NETKEIBA_BASE}/race/list/{day:%Y%m%d}/"
+        html = self._http.get_html(url)
+        return _extract_graded_jra_race_ids(html)
+
     def list_horse_race_ids(self, horse_id: str, since: date) -> list[str]:
         """馬の戦績ページから since 以降に出走した race_id を列挙する。"""
         html = self._http.get_html(f"{config.NETKEIBA_BASE}/horse/{horse_id}/")
@@ -73,6 +87,19 @@ def _extract_race_ids(html: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
     ids = [_race_id_from_href(a.get("href")) for a in soup.select("a[href*='/race/']")]
     return _dedup([i for i in ids if i])
+
+
+def _extract_graded_jra_race_ids(html: str) -> list[str]:
+    """list ページの各レースリンクから、JRA (コード 01-10) かつグレード表記を持つものだけ。"""
+    soup = BeautifulSoup(html, "lxml")
+    out: list[str] = []
+    for a in soup.select("a[href*='/race/']"):
+        rid = _race_id_from_href(a.get("href"))
+        if rid is None or rid[4:6] not in _JRA_COURSE_CODES:
+            continue
+        if find_grade(a.get_text()) is not None:
+            out.append(rid)
+    return _dedup(out)
 
 
 def _race_id_from_href(href: str | None) -> str | None:

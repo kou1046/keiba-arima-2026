@@ -1,7 +1,8 @@
-"""過去 15 年の重賞 (G1/G2/G3) を全競馬場ぶん取得する (workflow_dispatch、最長 ~3h)。
+"""過去 15 年の JRA 重賞 (G1/G2/G3) を取得する (workflow_dispatch)。
 
-開催日単位で全 race_id を列挙し、fetch 後に grade を持つレースだけ保存する。
-grade なし (平場) も「取得済」として state に残し、resume 時の再 fetch を防ぐ。
+開催日の list ページで重賞だけ pre-filter してから fetch する (全レースを取りに行かない)。
+discovery (list) と fetch の双方が state で resume 可能。grade は list テキスト由来なので
+detail 取得後に grade None だった場合の保険として keep でも再チェックする。
 """
 
 from __future__ import annotations
@@ -10,7 +11,7 @@ from .. import config
 from ..clients.netkeiba import NetkeibaClient, RacePage
 from ..discover import weekend_dates
 from . import run
-from ._scrape import collect_ids_on_dates, scrape_ids
+from ._scrape import discover_graded_stakes, scrape_ids
 
 
 def _is_graded(page: RacePage) -> bool:
@@ -20,8 +21,8 @@ def _is_graded(page: RacePage) -> bool:
 def _main() -> None:
     client = NetkeibaClient()
     try:
-        ids = collect_ids_on_dates(client, weekend_dates(config.SCOPE.stakes_years))
-        scrape_ids(client, ids, keep=_is_graded)
+        candidates = discover_graded_stakes(client, weekend_dates(config.SCOPE.stakes_years))
+        scrape_ids(client, candidates, keep=_is_graded)
     finally:
         client.close()
 

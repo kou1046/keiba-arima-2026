@@ -12,14 +12,13 @@ from bs4 import BeautifulSoup
 
 from ..models import Race
 from . import ParseError
-from ._util import clean, parse_jp_date, to_float, to_int
+from ._util import clean, find_grade, parse_jp_date, to_float, to_int
 
 _SURFACE_RE = re.compile(r"(芝|ダート|ダ|障)")
 _DISTANCE_RE = re.compile(r"(\d{3,4})m")
 _TURN_RE = re.compile(r"(右|左|直線|障)")
 _WEATHER_RE = re.compile(r"天候\s*[:：]\s*(\S+)")
 _COND_RE = re.compile(r"(?:馬場|芝|ダート)\s*[:：]\s*(良|稍重|重|不良)")
-_GRADE_RE = re.compile(r"\((G[123])\)|\b(G[123])\b")
 
 
 def parse(html: str, race_id: str) -> Race:
@@ -39,8 +38,7 @@ def parse(html: str, race_id: str) -> Race:
         raise ParseError(f"surface/distance not found: {race_id}")
     surface = "ダート" if surface_m.group(1) in ("ダ", "ダート") else surface_m.group(1)
 
-    grade_m = _GRADE_RE.search(name) or _GRADE_RE.search(meta_text)
-    grade = next((g for g in grade_m.groups() if g), None) if grade_m else None
+    grade = find_grade(name) or find_grade(meta_text)
 
     date_el = soup.select_one(".race_otherdata p") or soup.select_one(".smalltxt")
     race_date = parse_jp_date(clean(date_el.get_text())) if date_el else None
