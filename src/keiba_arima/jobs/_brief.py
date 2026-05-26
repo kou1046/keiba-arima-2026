@@ -33,7 +33,8 @@ def publish_race(con, r2: R2Client, race_id: str, is_review: bool, weather_note:
         prior = _latest_briefing_markdown(r2, race_id)
         markdown = briefing.generate_review(con, race_id, prior, chart_urls)
     else:
-        markdown = briefing.generate_briefing(con, race_id, chart_urls, weather_note)
+        note = "\n".join(n for n in (weather_note, _baba_note(con, race_id)) if n)
+        markdown = briefing.generate_briefing(con, race_id, chart_urls, note)
     key, url = publish.upload_briefing(r2, race_id, ts, markdown, is_review)
     publish.update_index(
         r2,
@@ -47,6 +48,27 @@ def publish_race(con, r2: R2Client, race_id: str, is_review: bool, weather_note:
     )
     log.info("published %s briefing: %s", "review" if is_review else "pre-race", url)
     return url
+
+
+def _baba_note(con, race_id: str) -> str:
+    """そのレースの競馬場の最新 JRA 馬場情報を 1 行で。baba 未蓄積なら空 (best-effort)。"""
+    try:
+        row = con.execute(
+            "SELECT b.cushion_value, b.turf_moisture, b.dirt_moisture, b.measured_date "
+            "FROM baba b JOIN races r ON r.race_id = ? AND b.course = r.course "
+            "ORDER BY b.measured_date DESC LIMIT 1",
+            [race_id],
+        ).fetchone()
+    except Exception as e:  # noqa: BLE001 - baba view 不在 / 取得失敗は無視
+        log.warning("baba note unavailable: %s", e)
+        return ""
+    if not row:
+        return ""
+    cushion, turf, dirt, mdate = row
+    return (
+        f"JRA 馬場 ({mdate}): クッション値={cushion or '-'} "
+        f"含水率 芝={turf or '-'}% ダート={dirt or '-'}%"
+    )
 
 
 def _latest_briefing_markdown(r2: R2Client, race_id: str) -> str:

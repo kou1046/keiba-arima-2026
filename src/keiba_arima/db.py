@@ -18,7 +18,7 @@ def connect() -> duckdb.DuckDBPyConnection:
     (read_parquet が no-match で IOError になるため)。view 不在 = まだ scrape 前。"""
     con = duckdb.connect(":memory:")
     root = data_dir().as_posix()
-    for dataset in ("races", "results", "payouts"):
+    for dataset in ("races", "results", "payouts", "baba"):
         pattern = f"{root}/year=*/month=*/{dataset}.parquet"
         if _glob.glob(pattern):
             con.execute(

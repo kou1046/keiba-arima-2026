@@ -84,7 +84,8 @@ secrets: `LLM_URL_SECRET` `LLM_AUTH_TOKEN` `R2_ACCOUNT_ID` `R2_ACCESS_KEY_ID`
 - **netkeiba** レース結果・馬個別・最終オッズ … 実装済 (`clients/netkeiba.py`)。
 - **気象庁 forecast** (千葉県北西部 = 中山) … 実装済 (`clients/jma.py`)。認証なし公開 JSON。
   `brief-upcoming` がレース当日の天気/降水確率/気温を briefing に添える。
-- **JRA クッション値 / 含水率** (第2弾、未実装) … 開催日 cron で live fetch + archive backfill 想定。
+- **JRA クッション値 / 含水率** … 実装済 (`clients/jra.py`)。`fetch-baba` (土日 cron) が `baba`
+  parquet に蓄積し、`brief-upcoming` がレース競馬場の最新値を briefing に添える。
 - **調教タイム** … JS 動的読み込みで静的 scrape 不可。Playwright or JRA-VAN 課金が必要なため見送り。
 
 ## 既知の TODO

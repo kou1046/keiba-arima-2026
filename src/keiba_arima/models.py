@@ -60,6 +60,17 @@ class Horse:
 
 
 @dataclass
+class BabaCondition:
+    """JRA 馬場情報 (競馬場 × 計測日)。クッション値は芝のみ、含水率は芝/ダート別。"""
+
+    course: str
+    measured_date: date
+    cushion_value: float | None = None
+    turf_moisture: float | None = None
+    dirt_moisture: float | None = None
+
+
+@dataclass
 class Payout:
     race_id: str
     ticket_type: str

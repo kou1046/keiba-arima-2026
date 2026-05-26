@@ -1,0 +1,28 @@
+name: fetch-baba
+
+on:
+  schedule:
+    # 開催日 (土日) の午前・午後に JRA クッション値/含水率を取得。当日のみ live。
+    - cron: "0 1,5 * * 6,0" # 土日 10:00 / 14:00 JST
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  baba:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.fetch_baba
+          commit-message: "data: JRA baba (cushion/moisture)"

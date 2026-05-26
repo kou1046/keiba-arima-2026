@@ -16,7 +16,7 @@ import polars as pl
 
 from . import SCHEMA_VERSION
 from .clients.netkeiba import RacePage
-from .models import Horse
+from .models import BabaCondition, Horse
 
 _DATASET_KEYS = {
     "races": ["race_id"],
@@ -71,3 +71,16 @@ def upsert_horses(horses: list[Horse]) -> None:
         return
     path = data_dir() / "horses.parquet"
     _upsert(path, _rows_to_df(horses), ["horse_id"])
+
+
+def upsert_baba(conditions: list[BabaCondition]) -> None:
+    """JRA 馬場情報を計測日の month partition に保存 (course × measured_date で unique)。"""
+    by_month: dict[tuple[int, int], list[BabaCondition]] = {}
+    for c in conditions:
+        by_month.setdefault((c.measured_date.year, c.measured_date.month), []).append(c)
+    for (year, month), rows in by_month.items():
+        _upsert(
+            _partition_path(year, month, "baba"),
+            _rows_to_df(rows),
+            ["course", "measured_date"],
+        )

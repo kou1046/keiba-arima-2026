@@ -80,6 +80,13 @@ PUBLIC_BASE_URL = "https://keiba.iwachan.dev"
 JMA_FORECAST_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/120000.json"
 JMA_AREA_CODE = "120010"  # 千葉県北西部
 
+# --- JRA 馬場情報 (event 1623 第2弾) --------------------------------------
+# クッション値 / 含水率。開催前日・当日のみ live、archive あり。当日 cron で fetch して蓄積。
+JRA_CUSHION_URL = "https://www.jra.go.jp/keiba/baba/cushion/"
+JRA_MOISTURE_URL = "https://www.jra.go.jp/keiba/baba/moist/"
+# JRA 中央 10 競馬場 (baba ページの行を引き当てる)。
+JRA_COURSES = ("札幌", "函館", "福島", "新潟", "東京", "中山", "中京", "京都", "阪神", "小倉")
+
 
 # --- LLM ------------------------------------------------------------------
 LLM_PROVIDER = "gemini"
