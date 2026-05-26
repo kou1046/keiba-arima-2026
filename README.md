@@ -16,7 +16,7 @@ src/keiba_arima/
 ├── http.py            # rate-limited httpx (8s + jitter, backoff, MAX_RETRIES で abort)
 ├── models.py          # races / results / horses / payouts の row dataclass
 ├── parsers/           # netkeiba HTML → dataclass (network に触れない純粋関数)
-├── clients/           # netkeiba / llm / r2 / line (class、必須 env を fail-fast)
+├── clients/           # netkeiba / jma / llm / r2 / line (class、必須 env を fail-fast)
 ├── store.py           # Parquet 蓄積 (race_date で year=/month= partition, keyed upsert)
 ├── db.py              # DuckDB read-only view (parquet glob)
 ├── state.py           # 取得済 id の記録 (resume 用)
@@ -66,6 +66,14 @@ backfill は IP block で落ちても `data/_state/*.json` から resume でき�
 vars: `LLM_BASE_URL` (例 `https://llm.iwachan.dev`), `R2_BUCKET` (`iwachan-general`)
 secrets: `LLM_URL_SECRET` `LLM_AUTH_TOKEN` `R2_ACCOUNT_ID` `R2_ACCESS_KEY_ID`
 `R2_SECRET_ACCESS_KEY` `LINE_CHANNEL_ACCESS_TOKEN` `LINE_USER_ID`
+
+## データソース (実地確認済 / event 1623)
+
+- **netkeiba** レース結果・馬個別・最終オッズ … 実装済 (`clients/netkeiba.py`)。
+- **気象庁 forecast** (千葉県北西部 = 中山) … 実装済 (`clients/jma.py`)。認証なし公開 JSON。
+  `brief-upcoming` がレース当日の天気/降水確率/気温を briefing に添える。
+- **JRA クッション値 / 含水率** (第2弾、未実装) … 開催日 cron で live fetch + archive backfill 想定。
+- **調教タイム** … JS 動的読み込みで静的 scrape 不可。Playwright or JRA-VAN 課金が必要なため見送り。
 
 ## 既知の TODO
 

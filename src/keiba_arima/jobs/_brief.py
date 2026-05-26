@@ -25,7 +25,7 @@ def graded_races_between(con, start: date, end: date) -> list[str]:
     return [r[0] for r in rows]
 
 
-def publish_race(con, r2: R2Client, race_id: str, is_review: bool) -> str:
+def publish_race(con, r2: R2Client, race_id: str, is_review: bool, weather_note: str = "") -> str:
     ts = _ts()
     charts = viz.render_all(con, race_id)
     chart_urls = publish.upload_charts(r2, race_id, ts, charts)
@@ -33,7 +33,7 @@ def publish_race(con, r2: R2Client, race_id: str, is_review: bool) -> str:
         prior = _latest_briefing_markdown(r2, race_id)
         markdown = briefing.generate_review(con, race_id, prior, chart_urls)
     else:
-        markdown = briefing.generate_briefing(con, race_id, chart_urls)
+        markdown = briefing.generate_briefing(con, race_id, chart_urls, weather_note)
     key, url = publish.upload_briefing(r2, race_id, ts, markdown, is_review)
     publish.update_index(
         r2,

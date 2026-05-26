@@ -9,11 +9,21 @@ import logging
 from datetime import date, timedelta
 
 from .. import db
+from ..clients.jma import JMAClient
 from ..clients.r2 import R2Client
 from . import run
 from ._brief import graded_races_between, publish_race
 
 log = logging.getLogger(__name__)
+
+
+def _weather_note() -> str:
+    """気象庁予報は取得失敗しても briefing 本体は出したいので best-effort。"""
+    try:
+        return JMAClient().latest_forecast().as_note()
+    except Exception as e:  # noqa: BLE001
+        log.warning("jma forecast unavailable: %s", e)
+        return ""
 
 
 def _main() -> None:
@@ -24,9 +34,10 @@ def _main() -> None:
         if not race_ids:
             log.info("no upcoming graded races in window")
             return
+        weather_note = _weather_note()
         r2 = R2Client()
         for race_id in race_ids:
-            publish_race(con, r2, race_id, is_review=False)
+            publish_race(con, r2, race_id, is_review=False, weather_note=weather_note)
     finally:
         con.close()
 

@@ -17,8 +17,9 @@ def _prompt(name: str) -> str:
     return resources.files("keiba_arima.prompts").joinpath(name).read_text(encoding="utf-8")
 
 
-def build_context(con, race_id: str) -> str:
-    """race メタ + 結果/出走表を LLM 用の plain text に整形。"""
+def build_context(con, race_id: str, weather_note: str = "") -> str:
+    """race メタ + 結果/出走表を LLM 用の plain text に整形。
+    weather_note は brief-upcoming 時に気象庁予報を添える用 (空なら省略)。"""
     race = con.execute(
         "SELECT name, race_date, course, surface, distance_m, turn, weather, "
         "track_condition, grade, n_runners FROM races WHERE race_id = ?",
@@ -47,14 +48,22 @@ def build_context(con, race_id: str) -> str:
             f"- {fp if fp > 0 else '着外'}: {hn} / {jk or '-'} / {wt or '-'}kg / "
             f"{t or '-'}s / 上り{up or '-'} / {pop or '-'}人気 / {odds or '-'}倍"
         )
+    if weather_note:
+        lines += ["", weather_note]
     return "\n".join(lines)
 
 
-def generate_briefing(con, race_id: str, chart_urls: dict[str, str], llm: LLMClient | None = None) -> str:
+def generate_briefing(
+    con,
+    race_id: str,
+    chart_urls: dict[str, str],
+    weather_note: str = "",
+    llm: LLMClient | None = None,
+) -> str:
     llm = llm or LLMClient()
     system = _prompt("briefing_system.md")
     few_shot = _prompt("briefing_few_shot.md")
-    context = build_context(con, race_id)
+    context = build_context(con, race_id, weather_note)
     body = llm.chat(
         [
             {"role": "system", "content": f"{system}\n\n{few_shot}"},

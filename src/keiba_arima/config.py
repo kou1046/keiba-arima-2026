@@ -73,6 +73,14 @@ R2_BRIEFINGS_PREFIX = f"{R2_PREFIX}/briefings"
 R2_INDEX_KEY = f"{R2_PREFIX}/index.json"
 PUBLIC_BASE_URL = "https://keiba.iwachan.dev"
 
+# --- 気象庁 forecast (event 1623 第1弾) ----------------------------------
+# 認証なしの公開 JSON。中山競馬場は千葉県船橋市 = 「千葉県北西部」エリア。
+# 過去レースの天気/馬場は netkeiba 側で取得済なので、これは brief-upcoming で
+# 「これから走るレース当日の予報」を briefing に添える用途。
+JMA_FORECAST_URL = "https://www.jma.go.jp/bosai/forecast/data/forecast/120000.json"
+JMA_AREA_CODE = "120010"  # 千葉県北西部
+
+
 # --- LLM ------------------------------------------------------------------
 LLM_PROVIDER = "gemini"
 LLM_MODEL = "gemini-2.5-flash"
