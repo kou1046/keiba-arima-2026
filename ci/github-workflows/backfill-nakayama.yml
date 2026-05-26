@@ -1,0 +1,25 @@
+name: backfill-nakayama
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_nakayama
+          commit-message: "data: backfill nakayama 2500m (10y)"

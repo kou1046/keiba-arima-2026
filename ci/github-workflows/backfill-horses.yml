@@ -1,0 +1,25 @@
+name: backfill-horses
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # 最長。backfill-stakes / backfill-nakayama 完了後に実行する。
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_horses
+          commit-message: "data: backfill horse histories (3y)"
