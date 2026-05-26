@@ -77,6 +77,18 @@ https://keiba.iwachan.dev/arima-2026/ にある分析メモ全部を時系列で
 | 買うか買わないか | 複数のシナリオを示す |
 | どの馬券種 | 配当の期待値を計算 |
 
+## データの置き場
+
+| 何 | どこ | 形式 | 公開度 |
+|---|---|---|---|
+| 生データ(レース結果・出走馬・配当・天気・馬場)| この repo の `data/` | Parquet(列指向 binary)| public(git に commit)|
+| 分析メモ(briefing / review)| Cloudflare R2 `keiba/briefings/` | markdown + SVG | `keiba.iwachan.dev` 経由、email allowlist |
+| メモの一覧 index | Cloudflare R2 `keiba/index.json` | JSON | 同上 |
+
+- 生データはレース結果など元から公開情報。`data/year=YYYY/month=MM/*.parquet` に蓄積。
+- 分析メモは AI が生成、過去版は消えないので時系列で追える。
+- 中間クエリ用の DuckDB は揮発(ファイルに残さず、毎回 Parquet から view を張る)。
+
 ## アクセスがほしい / もう少し詳しく知りたい
 
 オーナーに連絡してください。email allowlist に追加します。
