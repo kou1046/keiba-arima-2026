@@ -1,0 +1,31 @@
+name: run-scrape-job
+description: uv セットアップ → 指定 job module 実行 → data/ を commit & push する共通ステップ。
+
+inputs:
+  module:
+    description: "実行する python module (例: keiba_arima.jobs.backfill_stakes)"
+    required: true
+  commit-message:
+    description: "data commit のメッセージ"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - uses: astral-sh/setup-uv@v5
+    - run: uv sync
+      shell: bash
+    - run: uv run python -m ${{ inputs.module }}
+      shell: bash
+    - name: commit data
+      shell: bash
+      run: |
+        git config user.name  "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        if [ -n "$(git status --porcelain data)" ]; then
+          git add data
+          git commit -m "${{ inputs.commit-message }}"
+          git push
+        else
+          echo "no data changes"
+        fi
