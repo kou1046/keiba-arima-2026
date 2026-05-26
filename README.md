@@ -58,8 +58,20 @@ backfill は IP block で落ちても `data/_state/*.json` から resume でき�
 
 - `worker/` … R2 の `keiba/briefings/` を `<race-id>/...` として配信。`.md` は raw、`?html` で HTML 整形。
 - `terraform/` … `cloudflare_workers_custom_domain` + CF Access (One-Time PIN, email allowlist)。
-  初回は `cd worker && wrangler deploy` で Worker を作ってから `terraform apply`
-  (Custom Domain の chicken-and-egg)。友人の閲覧許可は `var.access_emails` を PR で増やす。
+
+### deploy (cf-gateway MCP 経由)
+
+Worker script は wrangler ではなく **cf-gateway MCP** で deploy する運用 (詳細は `terraform/README.md`):
+
+1. `cd worker && npx wrangler deploy --dry-run --outdir dist` で単一バンドル生成
+2. `prepare_deploy_upload("worker.js")` → 返った `upload_url` に bundle を PUT
+3. `deploy_worker(script_name="keiba", ...)` (Duo 承認) で CF へ multipart upload
+4. Custom Domain / CF Access は `terraform apply` (Custom Domain を cf_api で先行作成した場合は import)
+
+ローカル確認だけなら `cd worker && npx wrangler dev`。友人の閲覧許可は `var.access_emails` を PR で増やす。
+
+> 現状 (PoC): `keiba` Worker と Custom Domain `keiba.iwachan.dev` は作成済・到達確認済。
+> **CF Access は未設定 = 公開状態**。実データ投入・共有の前に `terraform apply` で Access を張ること。
 
 ## 必要な secret / vars (GH Actions)
 
