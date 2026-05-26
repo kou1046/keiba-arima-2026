@@ -1,0 +1,25 @@
+name: backfill-stakes
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350 # GH の 6h 上限内。死んでも state で resume。
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_stakes
+          commit-message: "data: backfill stakes (G1/G2/G3 15y)"

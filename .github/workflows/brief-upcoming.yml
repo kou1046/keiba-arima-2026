@@ -1,0 +1,30 @@
+name: brief-upcoming
+
+on:
+  schedule:
+    - cron: "30 14 * * 0" # 日曜 23:30 JST (週次)
+    - cron: "0 12 * * 4" # 木曜 21:00 JST (枠順発表後)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  brief:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+      LLM_URL_SECRET: ${{ secrets.LLM_URL_SECRET }}
+      LLM_AUTH_TOKEN: ${{ secrets.LLM_AUTH_TOKEN }}
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync
+      - run: uv run python -m keiba_arima.jobs.brief_upcoming

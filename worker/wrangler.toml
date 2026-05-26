@@ -1,0 +1,28 @@
+name = "keiba"
+main = "src/worker.js"
+compatibility_date = "2026-05-01"
+
+# *.workers.dev / preview URL は無効化。Custom Domain (keiba.iwachan.dev) のみ。
+# 認証は手前の CF Access (One-Time PIN) が担うので、workers.dev を塞いで素通りを防ぐ。
+workers_dev = false
+preview_urls = false
+
+# account_id は CLOUDFLARE_ACCOUNT_ID env で渡す。
+#
+# Custom Domain (keiba.iwachan.dev) は terraform (cloudflare_workers_custom_domain) で管理。
+# wrangler.toml に [[routes]] を書くと legacy Workers Routes API と衝突するため書かない。
+
+[vars]
+# R2 上の居住 prefix。worker は keiba/briefings/... を <race-id>/... に写して配信する。
+R2_PREFIX = "keiba"
+
+# 公開ストレージ (cross-project 共有、core-iac の cloudflare/iwachan-dev/r2.tf 管理)。
+# 書き込みは GH Actions の publish.py (S3 API)、worker は read / list のみ。
+[[r2_buckets]]
+binding = "KEIBA_R2"
+bucket_name = "iwachan-general"
+
+# Workers Logs (Dashboard > Workers > keiba > Logs)
+[observability.logs]
+enabled = true
+invocation_logs = true

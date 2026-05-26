@@ -34,3 +34,16 @@ htmlcov/
 # secret (もし誤って置いた場合の保険、原則 secret は env で渡す)
 .env
 .env.local
+
+# Terraform (core-iac と同じ運用: state / lock / vars / provider cache は commit しない)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+.terraform.lock.hcl
+crash.log
+
+# Node / wrangler
+node_modules/
+.wrangler/
