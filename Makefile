@@ -1,5 +1,6 @@
 .PHONY: sync lint test fmt \
-	scrape-weekly backfill-stakes backfill-nakayama backfill-horses brief-upcoming brief-review
+	scrape-weekly backfill-stakes backfill-nakayama backfill-horses backfill-target-runners \
+	brief-upcoming brief-review
 
 # 依存解決 (uv)
 sync:
@@ -26,6 +27,9 @@ backfill-nakayama:
 
 backfill-horses:
 	uv run python -m keiba_arima.jobs.backfill_horses
+
+backfill-target-runners:
+	uv run python -m keiba_arima.jobs.backfill_target_runners
 
 brief-upcoming:
 	uv run python -m keiba_arima.jobs.brief_upcoming

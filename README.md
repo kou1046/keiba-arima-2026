@@ -49,6 +49,7 @@ make lint      # ruff
 | `backfill-stakes` | 手動 | 過去 15 年の重賞 (G1/G2/G3) |
 | `backfill-nakayama` | 手動 | 過去 10 年の中山 2500m (平場含む) |
 | `backfill-horses` | 手動 | 出走馬の profile + 直近 3 年の戦績 |
+| `backfill-target-runners` | 手動 | 有馬記念 (`config.TARGET_RACE_NAMES`) 出走馬 × その開催年の全走行記録。過去年の出走馬の同年成績を埋める (backfill-horses の「今日から数年」窓では拾えない穴) |
 | `brief-upcoming` | 日曜 23:30 / 木曜 21:00 JST | 14 日以内の重賞の事前 briefing を R2 公開 |
 | `brief-review` | 月曜 01:00 JST | 直近に走った重賞の review を R2 公開 |
 

@@ -1,0 +1,30 @@
+name: backfill-target-runners
+
+# 対象レース (有馬記念) の出走馬 × その開催年の全走行記録を取得する。
+# backfill-stakes 完了後 (有馬記念の results がある状態) に dispatch する。
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  target-runners:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_target_runners
+          commit-message: "data: backfill target-race runners (yearly records)"

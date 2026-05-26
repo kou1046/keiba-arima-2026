@@ -69,15 +69,17 @@ class NetkeibaClient:
         return _extract_graded_jra_race_ids(html)
 
     def list_horse_race_ids(self, horse_id: str, since: date) -> list[str]:
-        """馬の戦績ページから since 以降に出走した race_id を列挙する。"""
+        """馬の戦績ページから since 以降 (年単位) に出走した race_id を列挙する。"""
         html = self._http.get_html(f"{config.NETKEIBA_BASE}/horse/{horse_id}/")
-        ids: list[str] = []
-        soup = BeautifulSoup(html, "lxml")
-        for a in soup.select("table.db_h_race_results a[href*='/race/']"):
-            rid = _race_id_from_href(a.get("href"))
-            if rid and int(rid[:4]) >= since.year:
-                ids.append(rid)
-        return _dedup(ids)
+        return [r for r in _extract_horse_race_ids(html) if int(r[:4]) >= since.year]
+
+    def list_horse_race_ids_in_year(self, horse_id: str, year: int) -> list[str]:
+        """馬の戦績ページから「指定年」に出走した race_id だけを列挙する。
+
+        過去の対象レース (例: 2015 有馬記念) 出走馬の、その年のキャンペーンを埋める用途。
+        """
+        html = self._http.get_html(f"{config.NETKEIBA_BASE}/horse/{horse_id}/")
+        return [r for r in _extract_horse_race_ids(html) if r[:4] == f"{year:04d}"]
 
 
 _RACE_HREF_RE = re.compile(r"/race/(\d{12})")
@@ -86,6 +88,16 @@ _RACE_HREF_RE = re.compile(r"/race/(\d{12})")
 def _extract_race_ids(html: str) -> list[str]:
     soup = BeautifulSoup(html, "lxml")
     ids = [_race_id_from_href(a.get("href")) for a in soup.select("a[href*='/race/']")]
+    return _dedup([i for i in ids if i])
+
+
+def _extract_horse_race_ids(html: str) -> list[str]:
+    """馬個別ページの戦績テーブルから出走 race_id を列挙する (年フィルタは呼び出し側)。"""
+    soup = BeautifulSoup(html, "lxml")
+    ids = [
+        _race_id_from_href(a.get("href"))
+        for a in soup.select("table.db_h_race_results a[href*='/race/']")
+    ]
     return _dedup([i for i in ids if i])
 
 
