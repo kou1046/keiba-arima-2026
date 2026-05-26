@@ -13,6 +13,7 @@ from .store import data_dir
 
 _RACES_FILE = "scraped_races.json"
 _HORSES_FILE = "scraped_horses.json"
+_PARSE_ERRORS_FILE = "parse_errors.json"
 
 
 def _path(name: str) -> Path:
@@ -56,3 +57,12 @@ def mark_horses(ids) -> None:
 def pending_horses(candidates) -> list[str]:
     done = scraped_horses()
     return [c for c in candidates if c not in done]
+
+
+def append_parse_errors(entries: list[tuple[str, str]]) -> None:
+    """parse 失敗を (id, error) で追記。1 レース失敗で job を止めず、後で気付くため。"""
+    p = _path(_PARSE_ERRORS_FILE)
+    existing = json.loads(p.read_text()) if p.exists() else []
+    existing += [{"id": i, "error": e} for i, e in entries]
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(existing, ensure_ascii=False, indent=0))

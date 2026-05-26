@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 import re
-from datetime import date
 
 from bs4 import BeautifulSoup
 
@@ -46,7 +45,8 @@ def parse(html: str, race_id: str) -> Race:
     date_el = soup.select_one(".race_otherdata p") or soup.select_one(".smalltxt")
     race_date = parse_jp_date(clean(date_el.get_text())) if date_el else None
     if race_date is None:
-        race_date = _date_from_race_id(race_id)
+        # 偽日付で埋めると時系列分析が静かに壊れるので fail-fast (LINE 通知で検知)。
+        raise ParseError(f"race_date not found: {race_id}")
 
     course_m = re.search(r"\d回(\S+?)\d日", clean(date_el.get_text()) if date_el else "")
     course = course_m.group(1) if course_m else _course_from_race_id(race_id)
@@ -96,8 +96,3 @@ def _course_from_race_id(race_id: str) -> str:
 
 def _race_no_from_id(race_id: str) -> int:
     return to_int(race_id[-2:]) or 0
-
-
-def _date_from_race_id(race_id: str) -> date:
-    # 日付は race_id から一意に決まらないため年だけ確実。最低限 1/1 で埋める。
-    return date(int(race_id[:4]), 1, 1)

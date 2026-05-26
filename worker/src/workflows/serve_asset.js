@@ -16,8 +16,15 @@ export async function serveAsset(req, env, raceId, file) {
     return html(htmlPage(`${raceId} briefing`, mdToHtml(md)));
   }
   return new Response(obj.body, {
-    headers: { "Content-Type": contentTypeFor(file), "Cache-Control": "public, max-age=300" },
+    headers: { "Content-Type": contentTypeFor(file), "Cache-Control": cacheControl(raceId) },
   });
+}
+
+// 過去年のレースの briefing は事実上 immutable なので長めに cache。当年は更新があり得るので短く。
+function cacheControl(raceId) {
+  const year = parseInt(raceId.slice(0, 4), 10);
+  const immutable = Number.isFinite(year) && year < new Date().getUTCFullYear();
+  return immutable ? "public, max-age=86400" : "public, max-age=300";
 }
 
 function html(body) {

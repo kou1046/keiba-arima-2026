@@ -17,9 +17,10 @@ def _prompt(name: str) -> str:
     return resources.files("keiba_arima.prompts").joinpath(name).read_text(encoding="utf-8")
 
 
-def build_context(con, race_id: str, weather_note: str = "") -> str:
+def build_context(con, race_id: str, weather_note: str = "", pre_race: bool = False) -> str:
     """race メタ + 結果/出走表を LLM 用の plain text に整形。
-    weather_note は brief-upcoming 時に気象庁予報を添える用 (空なら省略)。"""
+    weather_note は brief-upcoming 時に気象庁/JRA 馬場情報を添える用 (空なら省略)。
+    pre_race=True (レース前) は finish_pos が無いので人気順、False は着順で並べる。"""
     race = con.execute(
         "SELECT name, race_date, course, surface, distance_m, turn, weather, "
         "track_condition, grade, n_runners FROM races WHERE race_id = ?",
@@ -37,10 +38,14 @@ def build_context(con, race_id: str, weather_note: str = "") -> str:
         "",
         "## 結果 / 出走 (着順, 馬名, 騎手, 斤量, タイム, 上り3F, 人気, 単勝)",
     ]
+    order_by = (
+        "popularity ASC NULLS LAST"
+        if pre_race
+        else "CASE WHEN finish_pos > 0 THEN finish_pos ELSE 999 END"
+    )
     rows = con.execute(
         "SELECT finish_pos, horse_name, jockey, weight_carry_kg, time_s, up_3f_s, "
-        "popularity, odds_win FROM results WHERE race_id = ? ORDER BY "
-        "CASE WHEN finish_pos > 0 THEN finish_pos ELSE 999 END LIMIT ?",
+        f"popularity, odds_win FROM results WHERE race_id = ? ORDER BY {order_by} LIMIT ?",
         [race_id, _MAX_RESULT_ROWS],
     ).fetchall()
     for fp, hn, jk, wt, t, up, pop, odds in rows:
@@ -63,7 +68,7 @@ def generate_briefing(
     llm = llm or LLMClient()
     system = _prompt("briefing_system.md")
     few_shot = _prompt("briefing_few_shot.md")
-    context = build_context(con, race_id, weather_note)
+    context = build_context(con, race_id, weather_note, pre_race=True)
     body = llm.chat(
         [
             {"role": "system", "content": f"{system}\n\n{few_shot}"},

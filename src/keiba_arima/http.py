@@ -23,12 +23,24 @@ from . import config
 
 logger = logging.getLogger(__name__)
 
-# netkeiba は EUC-JP。httpx は charset 推定が弱いので明示する。
-NETKEIBA_ENCODING = "euc-jp"
+# host 別の文字コード。db.netkeiba.com (legacy) は EUC-JP、race.netkeiba.com (新) は UTF-8。
+# 未知 host は resp.charset_encoding → utf-8 にフォールバックする (get_html 参照)。
+_ENCODING_BY_HOST = {"db.netkeiba.com": "euc-jp"}
+
+
+def _encoding_for(url: str) -> str | None:
+    for host, enc in _ENCODING_BY_HOST.items():
+        if host in url:
+            return enc
+    return None
 
 
 class RateLimitedError(Exception):
-    """403 / 429 を retry 対象として包む。"""
+    """429 (rate limit hint) を retry 対象として包む。"""
+
+
+class PermanentBlockError(Exception):
+    """403 (WAF / IP ban)。retry せず即 abort して LINE 通知で気付く。"""
 
 
 class RateLimitedClient:
@@ -66,11 +78,14 @@ class RateLimitedClient:
         reraise=True,
     )
     def get_html(self, url: str) -> str:
-        """netkeiba ページを取得して EUC-JP デコード済の HTML を返す。"""
+        """ページを取得してデコード済の HTML を返す。403 は即 abort、429 は retry。"""
         self._throttle()
         resp = self._client.get(url)
-        if resp.status_code in (403, 429):
-            raise RateLimitedError(f"{resp.status_code} for {url}")
+        if resp.status_code == 403:
+            # permanent block の可能性が高い。backoff せず即上げて job を止める。
+            raise PermanentBlockError(f"403 for {url}")
+        if resp.status_code == 429:
+            raise RateLimitedError(f"429 for {url}")
         resp.raise_for_status()
-        resp.encoding = NETKEIBA_ENCODING
+        resp.encoding = _encoding_for(url) or resp.charset_encoding or "utf-8"
         return resp.text
