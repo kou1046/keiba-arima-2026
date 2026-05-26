@@ -35,3 +35,14 @@ terraform import cloudflare_workers_custom_domain.keiba \
 
 import 後 `terraform plan` で差分が出なければ取り込み成功。CF Access は未作成なので
 import 不要、apply で新規作成される (= ここで初めて keiba.iwachan.dev に認証が掛かる)。
+
+### 代替: import せず削除して再作成
+
+import を使わず、cf_api 作成分を一度消して terraform に作り直させてもよい。state が
+綺麗になる代わり、削除〜apply の間 keiba.iwachan.dev が一瞬落ちる点だけ注意:
+
+```bash
+# 既存 Custom Domain を削除 (cf-gateway cf_api or CF Dashboard)
+#   DELETE /accounts/<account_id>/workers/domains/321707bdc4cfd1522ed3325bf3f6ba6ea72da49d
+terraform apply   # custom_domain + access をまとめて新規作成
+```
