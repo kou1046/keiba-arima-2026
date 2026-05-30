@@ -14,6 +14,7 @@ from ..http import RateLimitedClient
 from ..models import Horse, Payout, Race, Result
 from ..parsers import horse as horse_parser
 from ..parsers import payout as payout_parser
+from ..parsers import pedigree as pedigree_parser
 from ..parsers import race as race_parser
 from ..parsers import result as result_parser
 from ..parsers._util import find_grade
@@ -49,8 +50,20 @@ class NetkeibaClient:
         )
 
     def fetch_horse(self, horse_id: str) -> Horse:
+        """詳細ページ + 血統ページの 2 リクエストで Horse を組み立てる。
+        血統 (sire/dam/dam_sire とその ID) は /horse/ped/<id>/ にしか無いため別途取得し、
+        詳細側 (生年月日/調教師/馬主/性別) とマージする。"""
         html = self._http.get_html(f"{config.NETKEIBA_BASE}/horse/{horse_id}/")
-        return horse_parser.parse(html, horse_id)
+        horse = horse_parser.parse(html, horse_id)
+        ped_html = self._http.get_html(f"{config.NETKEIBA_BASE}/horse/ped/{horse_id}/")
+        ped = pedigree_parser.parse(ped_html, horse_id)
+        horse.sire = ped.sire_name
+        horse.sire_id = ped.sire_id
+        horse.dam = ped.dam_name
+        horse.dam_id = ped.dam_id
+        horse.dam_sire = ped.dam_sire_name
+        horse.dam_sire_id = ped.dam_sire_id
+        return horse
 
     def list_race_ids_on(self, day: date) -> list[str]:
         """開催日の全 race_id を race_list ページから列挙する。"""

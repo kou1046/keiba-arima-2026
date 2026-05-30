@@ -48,8 +48,9 @@ def time_to_seconds(s: str | None) -> float | None:
 
 
 def horse_id_from_href(href: str | None) -> str | None:
-    """/horse/2019105219/ → 2019105219。"""
-    m = re.search(r"/horse/(\d+)", href or "")
+    """/horse/2019105219/ → 2019105219、海外馬は /horse/000a011996/ → 000a011996。
+    JRA は 10 桁数字、海外馬は 16 進 10 桁 (000a で始まる)。サブパス (/horse/ped/, /horse/top.html 等) は除外。"""
+    m = re.search(r"/horse/([0-9a-f]{10})(?:/|$|[?#])", href or "")
     return m.group(1) if m else None
 
 

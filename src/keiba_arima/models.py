@@ -53,8 +53,11 @@ class Horse:
     sex: str | None
     birth_date: date | None
     sire: str | None
+    sire_id: str | None
     dam: str | None
+    dam_id: str | None
     dam_sire: str | None
+    dam_sire_id: str | None
     trainer: str | None
     owner: str | None = None
 
