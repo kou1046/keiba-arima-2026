@@ -1,0 +1,30 @@
+name: backfill-pedigree
+
+# 血統 (sire/dam/dam_sire と各馬 ID) を /horse/ped/<id>/ から一括 backfill。
+# 旧 parser は blood_table を /horse/<id>/ から取ろうとしていたが現行ページには無く、
+# horses.parquet の血統列が全 NULL だったレガシー状態の埋め直し用。
+# 新規馬は backfill_horses の fetch_horse() が血統まで取るので不要。
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: keiba-scrape
+  cancel-in-progress: false
+
+jobs:
+  pedigree:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_pedigree
+          commit-message: "data: backfill pedigree (sire/dam/dam_sire + IDs)"
