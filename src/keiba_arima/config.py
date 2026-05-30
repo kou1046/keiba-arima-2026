@@ -60,10 +60,12 @@ def require(*names: str) -> dict[str, str]:
 
 
 # --- netkeiba / rate-limit ポリシー ---------------------------------------
-# GH runner の cloud IP は弾かれやすいので保守的に。8s 固定 + jitter、並列なし。
+# 自宅 (residential) IP からの local backfill 想定で 3 倍ペース。GH runner で動かすときは
+# 8s + 2s jitter に戻す (cloud IP は弾かれやすい)。403/429 で MAX_RETRIES backoff 動くので
+# ここを攻めすぎると tenacity 待ちが膨らみ逆に遅い。
 NETKEIBA_BASE = "https://db.netkeiba.com"
-REQUEST_INTERVAL_S = 8.0
-REQUEST_JITTER_S = 2.0
+REQUEST_INTERVAL_S = 2.5
+REQUEST_JITTER_S = 0.5
 USER_AGENT = "keiba-arima-2026-scraper/0.1 (+https://github.com/kou1046/keiba-arima-2026)"
 MAX_RETRIES = 5  # 403/429/5xx の backoff 上限。超えたら job abort。
 
