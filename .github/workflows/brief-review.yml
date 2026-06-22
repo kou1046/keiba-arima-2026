@@ -23,7 +23,7 @@ jobs:
       LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
       LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v5
       - run: uv sync
       - run: uv run python -m keiba_arima.jobs.brief_review
