@@ -64,3 +64,21 @@ jobs:
         with:
           module: keiba_arima.jobs.backfill_horses
           commit-message: "data: backfill horse histories (3y)"
+
+  pedigree:
+    # 旧 horses.parquet の血統 NULL を埋める。新規馬は backfill_horses の fetch_horse() が
+    # 血統まで取るのでここでは scraped_pedigree.json で未取得の馬だけが対象になる。
+    needs: horses
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    env:
+      LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
+      LINE_USER_ID: ${{ secrets.LINE_USER_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: ./.github/actions/run-scrape-job
+        with:
+          module: keiba_arima.jobs.backfill_pedigree
+          commit-message: "data: backfill pedigree (sire/dam/dam_sire + IDs)"

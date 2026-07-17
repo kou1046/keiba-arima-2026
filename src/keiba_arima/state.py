@@ -13,6 +13,7 @@ from .store import data_dir
 
 _RACES_FILE = "scraped_races.json"
 _HORSES_FILE = "scraped_horses.json"
+_PEDIGREE_FILE = "scraped_pedigree.json"
 _PARSE_ERRORS_FILE = "parse_errors.json"
 _LISTED_DATES_FILE = "listed_dates.json"
 _STAKES_CANDIDATES_FILE = "stakes_candidates.json"
@@ -58,6 +59,21 @@ def mark_horses(ids) -> None:
 
 def pending_horses(candidates) -> list[str]:
     done = scraped_horses()
+    return [c for c in candidates if c not in done]
+
+
+def scraped_pedigree() -> set[str]:
+    """血統 (/horse/ped/<id>/) 取得済の馬。詳細ページ (scraped_horses) とは別管理。
+    backfill_horses が完了してても血統列が NULL のレガシー状態を resume するため独立。"""
+    return _load(_PEDIGREE_FILE)
+
+
+def mark_pedigree(ids) -> None:
+    _save(_PEDIGREE_FILE, scraped_pedigree() | set(ids))
+
+
+def pending_pedigree(candidates) -> list[str]:
+    done = scraped_pedigree()
     return [c for c in candidates if c not in done]
 
 
